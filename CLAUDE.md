@@ -29,14 +29,25 @@ You don't need to read all of them every time — pick the ones relevant to the 
 
 ### 3. Do the work
 
-**Start with the business context.** For any data question, call `get_context_for_question` (Data MCP) first — it returns the relevant metric definitions, correct SQL patterns, and table schemas. This prevents wrong joins, wrong aggregation, and wrong tables.
+Two paths depending on what's being asked:
+
+**Answering a data question:**
+1. Call `get_context_for_question` (Data MCP) with the question → get metric definitions + correct SQL patterns
+2. Write the query following the metric definition
+3. Run via Data MCP (analysis tables) or Weld `run_query` (staging/intermediate)
+
+**Modifying the data model (changing/creating Weld transforms):**
+1. Read the relevant transforms with `get_transform` (Weld MCP) — understand the current SQL
+2. Check `schema/weld-architecture.txt` for downstream dependencies before changing anything
+3. Capture baseline output with `run_query` before making changes
+4. Make the change with `update_transform` (publish: true, wait_for_completion: true)
+5. Verify output after — compare to baseline, rematerialize downstream transforms
+6. See `schema/weld-guide.md` for the full step-by-step on modifying, creating, and rematerializing transforms
 
 **Which MCP to use:**
-- **Data MCP** → querying `analysis.*` and `hubspot.*` tables, browsing metrics/table definitions via `get_business_context` / `get_context_for_question`. This is what dashboards see.
-- **Weld MCP** → querying `staging.*` or `intermediate.*` using `run_query` with `{{weld_tag}}` syntax. Also for all transform operations (get, create, update, rematerialize).
-- Data MCP CANNOT access staging or intermediate tables.
-
-See `schema/weld-guide.md` for the full tool reference and common workflows.
+- **Data MCP** → querying `analysis.*` and `hubspot.*`, browsing the business context (metrics, table definitions) via `get_business_context` / `get_context_for_question`
+- **Weld MCP** → querying `staging.*` / `intermediate.*` / `raw.*` via `run_query` with `{{weld_tag}}` syntax. All transform operations (get, create, update, publish, rematerialize). Orchestration management.
+- Data MCP CANNOT access staging, intermediate, or raw tables.
 
 ### 4. Reply to Slack
 Post your findings/confirmation to the same channel and thread_ts. Be concise but include the data — numbers, table names, links to transforms. Format tables in code blocks if needed.

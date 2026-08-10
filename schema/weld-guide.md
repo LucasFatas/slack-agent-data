@@ -107,53 +107,135 @@ In `update_transform`, the `sql_template` field uses `{{folder.subfolder.transfo
 
 ## Common Workflows
 
-### "What does this transform do?"
+### Answering a data question
+```
+1. Call get_context_for_question (Data MCP) with the question
+2. Read the metric definition → correct SQL pattern, tables, caveats
+3. Write query using that pattern
+4. Run via Data MCP (analysis tables) or Weld run_query (staging/intermediate)
+5. get_query_status → get_query_result
+```
+
+### Investigating why numbers look wrong
+```
+1. Identify which analysis table feeds the dashboard (check weld-architecture.txt)
+2. get_transform with the transform ID → read the SQL
+3. run_query on the analysis output to see current numbers
+4. run_query on the intermediate/staging inputs to check upstream
+5. Trace through the dependency chain until you find where data diverges
+6. Report findings — don't change anything until root cause is clear
+```
+
+### Reading a transform
 ```
 1. Find the transform ID from weld-architecture.txt or attribution-model.md
-2. Call get_transform with the ID
-3. Read the SQL
+2. Call get_transform with the ID → returns full SQL, materialization, docs, dependencies
+3. Call get_transform_schema to see output columns
 ```
 
-### "Change a transform's SQL"
+### Modifying an existing transform
+
+This is the most common change operation. Follow this sequence exactly.
+
 ```
-1. get_transform → read current SQL
-2. Modify the SQL
-3. update_transform with publish: true, wait_for_completion: true
-4. run_query to verify the output
-5. get_query_status → get_query_result to check
+1. BEFORE changing anything:
+   a. get_transform → read current SQL and note the transform ID
+   b. Check weld-architecture.txt for DOWNSTREAM dependencies
+      (what other transforms SELECT FROM this one?)
+   c. run_query to capture current output (row count + key metrics)
+      → this is your baseline for verification
+
+2. Make the change:
+   a. Write the new sql_template
+   b. Use {{folder.subfolder.transform_name}} for all table references
+      (never hardcode BigQuery table names in transform SQL)
+   c. Call update_transform with:
+      - id: the transform ID
+      - sql_template: the new SQL
+      - documentation: update if the change affects what the transform does
+      - publish: true
+      - wait_for_completion: true
+
+3. AFTER the change:
+   a. run_query to check the output — compare to baseline
+   b. If this transform has downstream dependencies:
+      - rematerialize each downstream transform (wait_for_completion: true)
+      - Verify those outputs too
+   c. If numbers shifted, explain WHY in your Slack reply
+
+4. If something went wrong:
+   - You have the original SQL from step 1a — update_transform back to it
+   - rematerialize to restore
 ```
 
-### "Add a new analysis table"
+**Critical: the `sql_template` field**
+- Must use `{{weld_tag}}` references, not raw BigQuery table names
+- Tags use dots: `{{staging.page_views.page_views}}` not `{{staging/page_views/page_views}}`
+- The full SQL goes in `sql_template` as a string — no escaping needed beyond normal JSON
+- Always test your SQL with `run_query` first before committing it to `update_transform`
+
+### Creating a new transform
+
 ```
-1. create_transform in analysis/{domain}/ with materialization: "table"
-2. attach_transform_to_orchestration (RPRe9-hoy6ayS1)
-3. rematerialize_transform with wait_for_completion: true
-4. Verify with run_query
+1. Decide the layer:
+   - staging/ → cleaning a raw source
+   - intermediate/ → joining/computing across staging tables
+   - analysis/ → dashboard-ready output (most common for new tables)
+
+2. Write and test the SQL:
+   - Draft the SQL using {{weld_tags}} for all table references
+   - Test with run_query to confirm it produces correct output
+   - Check row count and grain (one row per what?)
+
+3. Create the transform:
+   - create_transform with:
+     - name: descriptive_snake_case
+     - folder: the appropriate layer folder (e.g. "analysis/demand_generation")
+     - sql_template: the tested SQL
+     - materialization: "table" (ALWAYS — never "view")
+     - documentation: what it does, what grain, key columns
+
+4. Wire it up:
+   - attach_transform_to_orchestration with orchestration RPRe9-hoy6ayS1
+   - rematerialize_transform with wait_for_completion: true
+   - Verify the output with run_query
+
+5. If it needs to be queryable via Data MCP / dashboards:
+   - It MUST be in analysis/ — that's the only layer Data MCP can see
+   - Update the business context (get_business_context) if you want
+     the table to be discoverable there
 ```
 
-### "Debug why numbers look wrong"
+### Rematerializing (re-running without SQL changes)
+
+When upstream data changed and you need to refresh a transform:
 ```
-1. Identify which analysis table feeds the dashboard
-2. get_transform → read the SQL
-3. run_query on the intermediate inputs to check
-4. Trace upstream through the dependency chain in weld-architecture.txt
-5. Find where the data diverges
+1. rematerialize_transform with id and wait_for_completion: true
+2. If it has downstream dependencies, rematerialize those too (in order)
+3. To rematerialize the entire pipeline: request_orchestration_run on RPRe9-hoy6ayS1
+   (this runs everything in dependency order — takes ~15-30 min)
 ```
 
-### "Query staging/intermediate data"
+### Querying different layers
+
+**Analysis tables (Data MCP):**
+```sql
+SELECT conversion_touch_source, COUNT(*) as contacts
+FROM analysis.demand_generation__contact_attribution
+WHERE recent_conversion_ts >= '2026-08-01'
+GROUP BY 1 ORDER BY 2 DESC
 ```
--- Can't use Data MCP for these. Use Weld run_query:
+
+**Staging/intermediate tables (Weld MCP run_query):**
+```sql
 SELECT * FROM {{staging.page_views.page_views}}
 WHERE event_date >= '2026-08-01'
 LIMIT 100
 ```
 
-### "Query analysis data"
-```
--- Use Data MCP (BigQuery) for analysis tables:
-SELECT conversion_touch_source, COUNT(*) as contacts
-FROM analysis.demand_generation__contact_attribution
-WHERE recent_conversion_ts >= '2026-08-01'
-GROUP BY 1
-ORDER BY 2 DESC
+**Raw source tables (Weld MCP run_query):**
+```sql
+SELECT * FROM {{raw.hubspot.contact}}
+WHERE property_createdate >= '2026-08-01'
+LIMIT 100
 ```
