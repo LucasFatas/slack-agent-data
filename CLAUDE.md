@@ -13,44 +13,30 @@ user:{slack_user_id}
 task: {the message text}
 ```
 
-## First thing every session: refresh the schema
-
-Before doing anything else, run the schema refresh:
-
-1. Call `mcp__Weld__list_transforms` to get all transforms
-2. For transforms in the attribution model folders (staging/, intermediate/, analysis/demand_generation/, reverse_etl/), call `get_transform` to get the full SQL
-3. Write the output to `schema/weld-transforms.json` following the structure documented in `scripts/refresh-schema.py`
-4. This ensures you're working with the latest transform definitions
-
 ## Workflow
 
 ### 1. Read the Slack thread
 Use `slack_read_thread` with the channel and thread_ts from the fire payload. Understand what's being asked — it could be a data question, a transform change request, a pipeline investigation, or an ad-hoc query.
 
-### 2. Do the work
-Use Data MCP (BigQuery) and Weld MCP as needed. Follow the critical rules and conventions below.
+### 2. Read your reference docs
+Before diving in, check the relevant reference files for context:
+- `schema/weld-guide.md` — how Weld works, MCP tool patterns, when to use what
+- `schema/attribution-model.md` — table dependency chain, transform IDs, column reference, join patterns
+- `schema/weld-architecture.txt` — full transform inventory with dependency graph
+- `schema/account-scoring-documentation.md` — account scoring model
 
-### 3. Log your work
-Append to `logs/data-ops.md`:
-```
-### [YYYY-MM-DD] Task summary
-- **Query/Change**: what you ran or changed
-- **Result**: key findings or confirmation
-- **Thread**: channel/thread reference
-```
-Commit and push.
+You don't need to read all of them every time — pick the ones relevant to the question.
+
+### 3. Do the work
+Use Data MCP and Weld MCP as needed. Fetch specific transform SQL on-demand with `get_transform` when you need it — don't try to preload everything.
+
+**Key decision: which MCP to use**
+- **Data MCP** (BigQuery direct) → for querying `analysis.*` and `hubspot.*` tables. This is what dashboards see.
+- **Weld MCP `run_query`** → for querying `staging.*` or `intermediate.*` using `{{weld_tag}}` syntax. Also for any transform operations (create, update, rematerialize).
+- Data MCP CANNOT access staging or intermediate tables.
 
 ### 4. Reply to Slack
 Post your findings/confirmation to the same channel and thread_ts. Be concise but include the data — numbers, table names, links to transforms. Format tables in code blocks if needed.
-
----
-
-## Read These References
-
-1. `schema/attribution-model.md` — the attribution model architecture, table IDs, column reference, and join patterns
-2. `schema/weld-architecture.txt` — full Weld transform inventory with dependency chain and execution order
-3. `schema/account-scoring-documentation.md` — account scoring model documentation
-4. `schema/weld-transforms.json` — auto-generated detailed reference with full SQL of each transform (refreshed at session start)
 
 ---
 
@@ -69,7 +55,7 @@ Views have caused dataset creation failures and performance issues.
 This was a deliberate design decision — conversion timestamp is the true event date.
 
 ### When something breaks, diagnose root cause before attempting fixes
-Never try random CSS/SQL changes. Read the data, understand why, then fix.
+Never try random SQL changes. Read the data, understand why, then fix.
 
 ### Platform filter is MANDATORY when joining spend to attribution
 Campaign names overlap between Google and Bing (same UTM names, different platforms). Always include `WHERE platform = '...'` or `AND ca.conversion_touch_platform = '...'` in joins.
@@ -104,11 +90,6 @@ All ad attribution transforms are on orchestration `RPRe9-hoy6ayS1` (Ads Attribu
 - **Keywords:** Always `LOWER()` keyword text (Google Ads has title case, UTMs have lowercase).
 
 ---
-
-## BigQuery Access
-- Project: `goworkwize-platform`
-- Data MCP can query `analysis.*` and `hubspot.*` schemas
-- Data MCP CANNOT query `staging.*` or `intermediate.*` — use Weld MCP `run_query` with `{{weld_tags}}` for those
 
 ## Source Classification
 ```
@@ -150,6 +131,11 @@ END
 - Audience Network: API `Audience_Network` = UTM `an`
 - Sub-platform values: `facebook`, `instagram`, `audience_network`, `messenger`, `threads`
 - 65% of Meta MQLs have placement data (older ads missing UTM param)
+
+## BigQuery Access
+- Project: `goworkwize-platform`
+- Data MCP can query `analysis.*` and `hubspot.*` schemas
+- Data MCP CANNOT query `staging.*` or `intermediate.*` — use Weld MCP `run_query` with `{{weld_tags}}` for those
 
 ## HubSpot Portal
 - Portal ID: 25662839
