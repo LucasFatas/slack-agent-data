@@ -24,6 +24,31 @@ reverse_etl/{destination}/  Syncs back to tools (HubSpot, etc.)
 - If someone asks about dashboard numbers, use Data MCP (it queries analysis tables)
 - Any table that needs to be used by a person, dashboard, or external tool MUST be in `analysis/`
 
+## Data MCP — Business Context (use this first)
+
+Data MCP has a semantic layer with metric definitions and table descriptions. **Before writing any query, check this first.**
+
+| Tool | When to use |
+|---|---|
+| `get_business_context` | Browse all available metrics and tables. Returns an index with names and short descriptions. Use this when you want to see what's available. |
+| `get_context_for_question` | Pass a natural language question (e.g. "campaign ROAS") and get back the relevant metric definitions, table schemas, and query patterns. **This is the fastest way to answer a data question correctly.** |
+| `get_metric_definition` | Get the full definition of a specific metric by name (e.g. "platform_roas"). Includes the SQL pattern, which tables to use, and caveats. |
+| `get_table` / `get_table_context` | Get column details and usage notes for a specific table. |
+| `run_query` / `preview_query` | Execute SQL against BigQuery (analysis.* and hubspot.* only). |
+
+**The business context knows:**
+- How every metric should be calculated (including which CTEs to separate, which joins to avoid)
+- Which tables are deprecated and what replaced them
+- Table grain (one row per what), row counts, and key columns
+- Cross-table join patterns
+- Domain-specific caveats (e.g. LinkedIn "campaign" = our adset)
+
+**Workflow for answering a data question:**
+1. Call `get_context_for_question` with the question → get relevant metrics + tables
+2. Read the metric definition → understand the correct SQL pattern
+3. Write and run the query using that pattern
+4. This prevents the most common mistakes (wrong joins, wrong aggregation, wrong table)
+
 ## Weld MCP Tools — When to Use Each
 
 ### Reading data

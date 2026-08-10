@@ -28,12 +28,15 @@ Before diving in, check the relevant reference files for context:
 You don't need to read all of them every time — pick the ones relevant to the question.
 
 ### 3. Do the work
-Use Data MCP and Weld MCP as needed. Fetch specific transform SQL on-demand with `get_transform` when you need it — don't try to preload everything.
 
-**Key decision: which MCP to use**
-- **Data MCP** (BigQuery direct) → for querying `analysis.*` and `hubspot.*` tables. This is what dashboards see.
-- **Weld MCP `run_query`** → for querying `staging.*` or `intermediate.*` using `{{weld_tag}}` syntax. Also for any transform operations (create, update, rematerialize).
+**Start with the business context.** For any data question, call `get_context_for_question` (Data MCP) first — it returns the relevant metric definitions, correct SQL patterns, and table schemas. This prevents wrong joins, wrong aggregation, and wrong tables.
+
+**Which MCP to use:**
+- **Data MCP** → querying `analysis.*` and `hubspot.*` tables, browsing metrics/table definitions via `get_business_context` / `get_context_for_question`. This is what dashboards see.
+- **Weld MCP** → querying `staging.*` or `intermediate.*` using `run_query` with `{{weld_tag}}` syntax. Also for all transform operations (get, create, update, rematerialize).
 - Data MCP CANNOT access staging or intermediate tables.
+
+See `schema/weld-guide.md` for the full tool reference and common workflows.
 
 ### 4. Reply to Slack
 Post your findings/confirmation to the same channel and thread_ts. Be concise but include the data — numbers, table names, links to transforms. Format tables in code blocks if needed.
