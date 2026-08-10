@@ -1,0 +1,336 @@
+================================================================================
+WELD TRANSFORM ARCHITECTURE - WORKWIZE ATTRIBUTION MODEL
+================================================================================
+Generated: 2026-07-22
+Total transforms: 578
+Orchestration: "Ads Attribution Model" (ID: RPRe9-hoy6ayS1)
+BigQuery project: goworkwize-platform
+================================================================================
+
+
+================================================================================
+DEPENDENCY GRAPH: ATTRIBUTION MODEL (Full Chain)
+================================================================================
+
+LAYER 1 - RAW SOURCES (ELT syncs, not transforms)
+  hubspot_page_views.raw_events          --> staging/page_views/page_views
+  raw.hubspot.contact_property_history   --> staging/page_views/contact_conversions
+  raw.hubspot.contact                    --> staging/page_views/contact_conversions
+  raw.google_ads.*                       --> staging/google_ads/*
+  raw.facebook_ads.*                     --> staging/meta/*
+  raw.linkedin_ads.*                     --> staging/linkedin/*
+  raw.microsoft_ads.*                    --> staging/microsoft_ads/*
+  raw.google_analytics_4.page_path       --> staging/google_analytics/page_views
+  raw.hubspot.contact_association        --> analysis/demand_generation (contact_attribution, pipeline_attribution, influenced_pipeline)
+  raw.hubspot.deal_property_history      --> reverse_etl_hubspot/deal_latest_paid_source
+
+LAYER 2 - STAGING
+  staging/page_views/page_views             --> intermediate/page_views/sessions
+  staging/page_views/contact_conversions    --> intermediate/page_views/contact_touchpoints, analysis/demand_generation/contact_attribution
+  staging/google_ads/campaigns              --> intermediate/ad_metrics/campaign_metrics, analysis/demand_generation/google_performance
+  staging/google_ads/ad_groups              --> intermediate/ad_metrics/adset_metrics
+  staging/google_ads/ads                    --> analysis/demand_generation/content_performance
+  staging/google_ads/keywords               --> analysis/demand_generation/google_keyword_performance
+  staging/google_ads/keyword_impression_share --> analysis/demand_generation/keyword_impression_share
+  staging/google_ads/ad_group_impression_share --> intermediate/ad_metrics/adset_impression_share
+  staging/google_ads/campaign_impression_share --> intermediate/ad_metrics/campaign_impression_share
+  staging/meta/campaigns                    --> intermediate/ad_metrics/campaign_metrics, analysis/demand_generation/meta_performance
+  staging/meta/ad_sets                      --> intermediate/ad_metrics/adset_metrics
+  staging/meta/ads                          --> analysis/demand_generation/content_performance
+  staging/meta/placement_performance        --> analysis/demand_generation/meta_placement_performance
+  staging/meta/platform_performance         --> analysis/demand_generation/meta_sub_platform_performance
+  staging/linkedin/campaign_groups          --> intermediate/ad_metrics/campaign_metrics, analysis/demand_generation/linkedin_performance
+  staging/linkedin/campaigns                --> intermediate/ad_metrics/adset_metrics
+  staging/linkedin/creatives                --> analysis/demand_generation/content_performance
+  staging/microsoft_ads/campaigns           --> intermediate/ad_metrics/campaign_metrics, analysis/demand_generation/microsoft_performance
+  staging/microsoft_ads/ad_groups           --> intermediate/ad_metrics/adset_metrics
+  staging/microsoft_ads/ads                 --> analysis/demand_generation/content_performance
+  staging/microsoft_ads/keywords            --> analysis/demand_generation/microsoft_keyword_performance
+  staging/microsoft_ads/ad_group_impression_share --> intermediate/ad_metrics/adset_impression_share
+  staging/microsoft_ads/campaign_impression_share --> intermediate/ad_metrics/campaign_impression_share
+  staging/google_analytics/page_views       --> analysis/demand_generation/landing_page_performance
+
+LAYER 3 - INTERMEDIATE
+  intermediate/page_views/sessions          --> intermediate/page_views/contact_touchpoints
+  intermediate/page_views/contact_touchpoints --> analysis/demand_generation/* (touchpoint_timeline, contact_attribution, influenced_pipeline, landing_page_performance, session_page_views)
+  intermediate/ad_metrics/campaign_metrics  --> analysis/demand_generation/campaign_impression_share, analysis/demand_generation/platform_summary
+  intermediate/ad_metrics/adset_metrics     --> analysis/demand_generation/adset_impression_share, analysis/demand_generation/adset_performance
+  intermediate/ad_metrics/campaign_impression_share --> analysis/demand_generation/campaign_impression_share
+  intermediate/ad_metrics/adset_impression_share --> analysis/demand_generation/adset_impression_share
+
+LAYER 4 - ANALYSIS
+  analysis/demand_generation/contact_attribution --> analysis/demand_generation/touchpoint_timeline, pipeline_attribution, landing_page_performance, session_page_views
+  analysis/demand_generation/pipeline_attribution --> reverse_etl/hubspot/deal_conversion_attribution
+  analysis/commercial/deal_clean            --> analysis/demand_generation/pipeline_attribution (hardcoded ref)
+
+LAYER 5 - REVERSE ETL
+  reverse_etl/hubspot/contact_conversion_attribution --> HubSpot (reads from contact_attribution)
+  reverse_etl/hubspot/deal_conversion_attribution    --> HubSpot (reads from pipeline_attribution)
+
+
+================================================================================
+TRANSFORM INVENTORY BY FOLDER
+================================================================================
+
+--------------------------------------------------------------------------------
+staging/page_views/ (2 transforms)
+--------------------------------------------------------------------------------
+ILkp3u-JHpQRzw | page_views | staging/page_views | table | orch: RPRe9-hoy6ayS1 | deps: hubspot_page_views.raw_events, google_ads.campaign_stats (campaign name lookup)
+xd-AMwmqNf6fZ1 | contact_conversions | staging/page_views | table | orch: RPRe9-hoy6ayS1 | deps: {{raw.hubspot.contact_property_history}}, {{raw.hubspot.contact}}
+
+--------------------------------------------------------------------------------
+staging/google_ads/ (7 transforms)
+--------------------------------------------------------------------------------
+JB6347m75ZZ1O4 | campaigns | staging/google_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.google_ads.campaign_stats
+NTKfcVI-MdTouh | ad_groups | staging/google_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.google_ads.ad_group_stats, raw.google_ads.campaign_stats
+YTkgBsXmcWk08L | ads | staging/google_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.google_ads.ad_stats, raw.google_ads.campaign_stats
+vpvKVZg6pFajGf | keywords | staging/google_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.google_ads.keyword_stats, raw.google_ads.ad_group_criterion, raw.google_ads.campaign
+Bc7ZJchnBV_5Vn | keyword_impression_share | staging/google_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw source (hardcoded)
+wVt5oxLSMztT4X | ad_group_impression_share | staging/google_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw source (hardcoded)
+18cSYx8swW2xX- | campaign_impression_share | staging/google_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw source (hardcoded)
+
+--------------------------------------------------------------------------------
+staging/meta/ (5 transforms)
+--------------------------------------------------------------------------------
+WEAE7hDhp7yiD- | campaigns | staging/meta | table | orch: RPRe9-hoy6ayS1 | deps: raw.facebook_ads.campaign_insight_actions, raw.facebook_ads.campaign_insight
+bQMpXk3qwVyRe9 | ad_sets | staging/meta | table | orch: RPRe9-hoy6ayS1 | deps: raw.facebook_ads.ad_set_insight_actions, raw.facebook_ads.ad_set_insight
+OkwpBQBGlZsdOd | ads | staging/meta | table | orch: RPRe9-hoy6ayS1 | deps: raw.facebook_ads.ad_insight, raw.facebook_ads.ad_insight_actions
+KRTlh5V4TSXCOX | placement_performance | staging/meta | table | orch: RPRe9-hoy6ayS1 | deps: raw.facebook_ads.placement_performance
+jz8TlIwGRqw-7H | platform_performance | staging/meta | table | orch: RPRe9-hoy6ayS1 | deps: raw.facebook_ads.demographics_delivery_platform_ad
+
+--------------------------------------------------------------------------------
+staging/linkedin/ (3 transforms)
+--------------------------------------------------------------------------------
+avnH3iRLARExES | campaign_groups | staging/linkedin | table | orch: RPRe9-hoy6ayS1 | deps: raw.linkedin_ads.campaign, raw.linkedin_ads.campaign_group, raw.linkedin_ads.ad_analytics_by_campaign
+HD1z2eCF9-NE3P | campaigns | staging/linkedin | table | orch: RPRe9-hoy6ayS1 | deps: raw.linkedin_ads.campaign, raw.linkedin_ads.campaign_group, raw.linkedin_ads.ad_analytics_by_campaign
+-0eSjC2FAVUP5l | creatives | staging/linkedin | table | orch: RPRe9-hoy6ayS1 | deps: raw source (hardcoded)
+
+--------------------------------------------------------------------------------
+staging/microsoft_ads/ (6 transforms)
+--------------------------------------------------------------------------------
+hIn-60W8BagBZV | campaigns | staging/microsoft_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.microsoft_ads.campaign, raw.microsoft_ads.campaign_performance_daily_report
+dF4g7v8jVXFqM0 | ad_groups | staging/microsoft_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.microsoft_ads.ad_group_performance_daily_report, raw.microsoft_ads.campaign, raw.microsoft_ads.ad_group
+6hhOEPH_HduLNR | ads | staging/microsoft_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.microsoft_ads.ad_performance_daily_report, raw.microsoft_ads.campaign, raw.microsoft_ads.ad_group, raw.microsoft_ads.ad
+tm8aPFQXMZTHwL | keywords | staging/microsoft_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.microsoft_ads.keyword_performance_daily_report, raw.microsoft_ads.campaign, raw.microsoft_ads.keyword
+DSkIXH_TauzrNw | ad_group_impression_share | staging/microsoft_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.microsoft_ads.ad_group_impression_performance_daily_report, raw.microsoft_ads.campaign, raw.microsoft_ads.ad_group
+G8eAqXAT_4qzR6 | campaign_impression_share | staging/microsoft_ads | table | orch: RPRe9-hoy6ayS1 | deps: raw.microsoft_ads.campaign_impression_performance_daily_report, raw.microsoft_ads.campaign
+
+--------------------------------------------------------------------------------
+staging/google_analytics/ (1 transform)
+--------------------------------------------------------------------------------
+H4XvHiOKvgwWYv | page_views | staging/google_analytics | table | orch: RPRe9-hoy6ayS1 | deps: google_analytics_4.page_path (hardcoded BQ)
+
+--------------------------------------------------------------------------------
+staging/hubspot/ (5 transforms) -- supporting the attribution model
+--------------------------------------------------------------------------------
+GRkdfeiNwuQ7bS | company | staging/hubspot | table | deps: raw.hubspot.company
+QYpgdZXIUyaxSJ | contact | staging/hubspot | table | deps: raw.hubspot.contact
+IOsWfhnaJDFg3r | deal | staging/hubspot | table | deps: raw.hubspot.deal
+r3VcLS5JBD6IgO | engagement | staging/hubspot | table | deps: raw.hubspot.engagement
+D6Y9N5gMrtxs_w | engagement_meeting | staging/hubspot | table | deps: raw.hubspot.engagement_meeting
+
+--------------------------------------------------------------------------------
+intermediate/page_views/ (2 transforms)
+--------------------------------------------------------------------------------
+4w4ONRIfPLr8EE | sessions | intermediate/page_views | table | orch: RPRe9-hoy6ayS1 | deps: staging.page_views__page_views (hardcoded BQ)
+8iB4ZE9uQGxbxK | contact_touchpoints | intermediate/page_views | table | orch: RPRe9-hoy6ayS1 | deps: staging.page_views__contact_conversions, intermediate.page_views__sessions (hardcoded BQ)
+
+--------------------------------------------------------------------------------
+intermediate/ad_metrics/ (4 transforms)
+--------------------------------------------------------------------------------
+k2FGLCWSyLS3c_ | campaign_metrics | intermediate/ad_metrics | table | orch: RPRe9-hoy6ayS1 | deps: staging.google_ads__campaigns, staging.meta__campaigns, staging.linkedin__campaign_groups, staging.microsoft_ads__campaigns (hardcoded BQ)
+KS1yb26a9O-og3 | adset_metrics | intermediate/ad_metrics | table | orch: RPRe9-hoy6ayS1 | deps: staging.google_ads__ad_groups, staging.meta__ad_sets, staging.linkedin__campaigns, staging.microsoft_ads__ad_groups (hardcoded BQ)
+uvp9DovNohKmrE | campaign_impression_share | intermediate/ad_metrics | table | orch: RPRe9-hoy6ayS1 | deps: {{staging.google_ads.campaign_impression_share}}, {{staging.microsoft_ads.campaign_impression_share}}
+LT0wqmF4Q1pSId | adset_impression_share | intermediate/ad_metrics | table | orch: RPRe9-hoy6ayS1 | deps: {{staging.microsoft_ads.ad_group_impression_share}}, {{staging.google_ads.ad_group_impression_share}}
+
+--------------------------------------------------------------------------------
+intermediate/hubspot/ (3 transforms) -- supporting the attribution model
+--------------------------------------------------------------------------------
+6ryYfzM6dolsRV | active_company | intermediate/hubspot | table | deps: {{staging.hubspot.company}}
+7uupFbj_qidMnJ | active_deal | intermediate/hubspot | table | deps: {{staging.hubspot.deal}}
+t56YA-BSHC50RR | engagement_enriched | intermediate/hubspot | table | deps: staging.gong.call, raw.hubspot.owner, {{staging.hubspot.engagement}}, {{staging.hubspot.engagement_meeting}}
+
+--------------------------------------------------------------------------------
+analysis/demand_generation/ (20 transforms)
+--------------------------------------------------------------------------------
+L7nzfK0KCIS37a | contact_attribution | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.page_views__contact_touchpoints, staging.page_views__contact_conversions, linkedin_ads.campaign/campaign_group, {{raw.hubspot.contact_association}}, {{commercial.deal_shortened}}, hubspot.deal_property_history
+N2dW17npUi53W9 | pipeline_attribution | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: analysis.commercial__deal_clean, analysis.commercial__deal_stage_history, {{raw.hubspot.contact_association}}, analysis.demand_generation__contact_attribution
+E5IyEoyhpOJALj | influenced_pipeline | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: {{raw.hubspot.contact_association}}, {{commercial.deal_shortened}}, intermediate.page_views__contact_touchpoints
+92fmqEHeBfh6Zt | touchpoint_timeline | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.page_views__contact_touchpoints, staging.page_views__contact_conversions, analysis.demand_generation__contact_attribution
+FL_UL2AVgbyoxZ | session_page_views | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.page_views__contact_touchpoints, hubspot_page_views.raw_events
+YogDr5y8W0kJbp | landing_page_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.google_analytics__page_views, intermediate.page_views__contact_touchpoints, analysis.demand_generation__contact_attribution, hubspot.deal_property_history
+eEkCnxE8Pr9w0U | google_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.google_ads__campaigns
+WSJ8alh7FhHkJw | meta_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.meta__campaigns
+1_i2DdM6fci7-E | linkedin_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.linkedin__campaign_groups
+OmMYozhWRduKBy | microsoft_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.microsoft_ads__campaigns
+HXtme5ytJowYpB | platform_summary | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.ad_metrics__campaign_metrics
+EJ-zGnX1Upw66C | adset_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.ad_metrics__adset_metrics
+2kNjol3I3hmj4c | content_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.google_ads__ads, staging.meta__ads, staging.linkedin__creatives, staging.microsoft_ads__ads, facebook_ads.ad (preview link)
+KkaTHtCGXkkPzS | google_keyword_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.google_ads__keywords
+y0lo-tLMNzId6F | microsoft_keyword_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.microsoft_ads__keywords
+Ntka5YL8jQnTri | keyword_impression_share | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: {{staging.google_ads.keyword_impression_share}}
+U9zob-ZLvx1sAY | campaign_impression_share | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.ad_metrics.campaign_metrics, intermediate.ad_metrics.campaign_impression_share
+4ixu8dsdo0WdiN | adset_impression_share | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.ad_metrics.adset_metrics, intermediate.ad_metrics.adset_impression_share
+0AIveo4Lkk97oF | meta_placement_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.meta__placement_performance
+7jH9rmGaYP3ZNm | meta_sub_platform_performance | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: staging.meta__platform_performance
+
+--------------------------------------------------------------------------------
+reverse_etl/hubspot/ (2 transforms)
+--------------------------------------------------------------------------------
+NRd5Vb0Bwd_2KG | contact_conversion_attribution | reverse_etl/hubspot | view | no orch | deps: analysis.demand_generation__contact_attribution, hubspot.contact
+8sx457W9sRr85H | deal_conversion_attribution | reverse_etl/hubspot | view | no orch | deps: analysis.demand_generation__pipeline_attribution
+
+--------------------------------------------------------------------------------
+reverse_etl_hubspot/ (1 transform, legacy folder)
+--------------------------------------------------------------------------------
+EXmNp0UVmBFyU8 | deal_latest_paid_source | reverse_etl_hubspot | view | no orch | deps: raw.hubspot.deal_property_history
+
+
+================================================================================
+CROSS-DOMAIN DEPENDENCIES (outside attribution model)
+================================================================================
+
+commercial/deal_shortened (uX5EwnPGedtkaf) -- used by contact_attribution, influenced_pipeline
+  deps: raw.hubspot.owner, raw.hubspot.company, raw.hubspot.company_association,
+        raw.hubspot.pipeline, commercial.pipeline_days_in_stages, raw.hubspot.deal,
+        raw.hubspot.owner_team, raw.hubspot.pipeline_stage
+
+analysis/commercial/deal_clean (h2FBk_NZqXHfFv) -- used by pipeline_attribution
+  deps: intermediate.hubspot.active_deal, raw.hubspot.owner, raw.hubspot.company_association,
+        staging.hubspot.company, raw.hubspot.pipeline, commercial.pipeline_days_in_stages,
+        raw.hubspot.owner_team, raw.hubspot.pipeline_stage
+
+analysis/commercial/deal_stage_history (DBYoBbwl2WTrWH) -- used by pipeline_attribution
+  deps: staging.hubspot.deal, raw.hubspot.pipeline, raw.hubspot.owner, raw.hubspot.pipeline_stage
+
+
+================================================================================
+EXECUTION ORDER (within orchestration RPRe9-hoy6ayS1)
+================================================================================
+
+Phase 1 - Staging (no inter-dependencies, all read from raw ELT sources):
+  staging/page_views/page_views
+  staging/page_views/contact_conversions
+  staging/google_ads/campaigns
+  staging/google_ads/ad_groups
+  staging/google_ads/ads
+  staging/google_ads/keywords
+  staging/google_ads/keyword_impression_share
+  staging/google_ads/ad_group_impression_share
+  staging/google_ads/campaign_impression_share
+  staging/meta/campaigns
+  staging/meta/ad_sets
+  staging/meta/ads
+  staging/meta/placement_performance
+  staging/meta/platform_performance
+  staging/linkedin/campaign_groups
+  staging/linkedin/campaigns
+  staging/linkedin/creatives
+  staging/microsoft_ads/campaigns
+  staging/microsoft_ads/ad_groups
+  staging/microsoft_ads/ads
+  staging/microsoft_ads/keywords
+  staging/microsoft_ads/ad_group_impression_share
+  staging/microsoft_ads/campaign_impression_share
+  staging/google_analytics/page_views
+
+Phase 2 - Intermediate (depends on staging):
+  intermediate/page_views/sessions              <- staging/page_views/page_views
+  intermediate/ad_metrics/campaign_metrics       <- staging/{google_ads,meta,linkedin,microsoft_ads}/campaigns
+  intermediate/ad_metrics/adset_metrics          <- staging/{google_ads,meta,linkedin,microsoft_ads}/ad_groups|ad_sets|campaigns
+  intermediate/ad_metrics/campaign_impression_share <- staging/{google_ads,microsoft_ads}/campaign_impression_share
+  intermediate/ad_metrics/adset_impression_share <- staging/{google_ads,microsoft_ads}/ad_group_impression_share
+
+Phase 3 - Intermediate (depends on phase 2):
+  intermediate/page_views/contact_touchpoints    <- staging/page_views/contact_conversions + intermediate/page_views/sessions
+
+Phase 4 - Analysis ad spend (depends on phase 2):
+  analysis/demand_generation/google_performance  <- staging/google_ads/campaigns
+  analysis/demand_generation/meta_performance    <- staging/meta/campaigns
+  analysis/demand_generation/linkedin_performance <- staging/linkedin/campaign_groups
+  analysis/demand_generation/microsoft_performance <- staging/microsoft_ads/campaigns
+  analysis/demand_generation/platform_summary    <- intermediate/ad_metrics/campaign_metrics
+  analysis/demand_generation/adset_performance   <- intermediate/ad_metrics/adset_metrics
+  analysis/demand_generation/content_performance <- staging/*/ads|creatives
+  analysis/demand_generation/google_keyword_performance <- staging/google_ads/keywords
+  analysis/demand_generation/microsoft_keyword_performance <- staging/microsoft_ads/keywords
+  analysis/demand_generation/keyword_impression_share <- staging/google_ads/keyword_impression_share
+  analysis/demand_generation/campaign_impression_share <- intermediate/ad_metrics/*
+  analysis/demand_generation/adset_impression_share <- intermediate/ad_metrics/*
+  analysis/demand_generation/meta_placement_performance <- staging/meta/placement_performance
+  analysis/demand_generation/meta_sub_platform_performance <- staging/meta/platform_performance
+
+Phase 5 - Analysis attribution (depends on phase 3):
+  analysis/demand_generation/contact_attribution <- intermediate/page_views/contact_touchpoints + staging/page_views/contact_conversions + commercial.deal_shortened
+  analysis/demand_generation/session_page_views  <- intermediate/page_views/contact_touchpoints + hubspot_page_views.raw_events
+
+Phase 6 - Analysis pipeline + timeline (depends on phase 5):
+  analysis/demand_generation/touchpoint_timeline <- intermediate/page_views/contact_touchpoints + contact_attribution + contact_conversions
+  analysis/demand_generation/pipeline_attribution <- contact_attribution + deal_clean + deal_stage_history
+  analysis/demand_generation/influenced_pipeline <- contact_touchpoints + deal_shortened
+  analysis/demand_generation/landing_page_performance <- GA4 page_views + contact_touchpoints + contact_attribution
+
+Phase 7 - Reverse ETL (depends on phase 5-6):
+  reverse_etl/hubspot/contact_conversion_attribution <- contact_attribution
+  reverse_etl/hubspot/deal_conversion_attribution <- pipeline_attribution
+
+
+================================================================================
+BIGQUERY TABLE NAMING CONVENTION
+================================================================================
+All transforms materialize to: goworkwize-platform.<folder_with_underscores>__<name>
+Examples:
+  staging/page_views/page_views       -> goworkwize-platform.staging.page_views__page_views
+  intermediate/ad_metrics/adset_metrics -> goworkwize-platform.intermediate.ad_metrics__adset_metrics
+  analysis/demand_generation/contact_attribution -> goworkwize-platform.analysis.demand_generation__contact_attribution
+
+Weld tags use dot notation: {{staging.google_ads.campaign_impression_share}}
+Hardcoded BQ refs use: `goworkwize-platform.staging.google_ads__campaigns`
+
+
+================================================================================
+ALL REMAINING TRANSFORMS (non-attribution, for reference)
+================================================================================
+
+--- staging/hubspot/ ---
+GRkdfeiNwuQ7bS | company | staging/hubspot | table | deps: raw.hubspot.company
+QYpgdZXIUyaxSJ | contact | staging/hubspot | table | deps: raw.hubspot.contact
+IOsWfhnaJDFg3r | deal | staging/hubspot | table | deps: raw.hubspot.deal
+r3VcLS5JBD6IgO | engagement | staging/hubspot | table | deps: raw.hubspot.engagement
+D6Y9N5gMrtxs_w | engagement_meeting | staging/hubspot | table | deps: raw.hubspot.engagement_meeting
+
+--- intermediate/hubspot/ ---
+6ryYfzM6dolsRV | active_company | intermediate/hubspot | table | deps: staging.hubspot.company
+7uupFbj_qidMnJ | active_deal | intermediate/hubspot | table | deps: staging.hubspot.deal
+t56YA-BSHC50RR | engagement_enriched | intermediate/hubspot | table | deps: staging.gong.call, staging.hubspot.engagement, staging.hubspot.engagement_meeting
+
+--- analysis/commercial/ (attribution-adjacent) ---
+h2FBk_NZqXHfFv | deal_clean | analysis/commercial | table | deps: intermediate.hubspot.active_deal, staging.hubspot.company, commercial.pipeline_days_in_stages
+DBYoBbwl2WTrWH | deal_stage_history | analysis/commercial | table | deps: staging.hubspot.deal, raw.hubspot.pipeline
+2a9qdwoHg1REtb | engagement_clean | analysis/commercial | table | deps: intermediate.hubspot.engagement_enriched
+SO_ved3Sr-bO2l | engagement_timeline | analysis/commercial | table | deps: staging.hubspot.engagement, analysis.commercial.engagement_clean
+dNX6YX4_ChpP5D | disco_scoring | analysis/commercial | table | deps: raw.call_analysis.disco_call_score_v2, analysis.commercial.engagement_clean
+QFKZsn7z5jGDuQ | live_client_hubspot_data | analysis/commercial | table | deps: intermediate.hubspot.active_deal, intermediate.hubspot.active_company
+6mpuGj3C-FKwvt | pipeline_daily_snapshot | analysis/commercial | table | deps: staging.hubspot.deal, raw.hubspot.deal_property_history
+gHNimOlxnxZdY7 | reengagement_status | analysis/commercial | table | deps: raw source
+
+--- ad_data/ (legacy folder, 9 transforms, views only) ---
+_QtqrITmyTUhI3 | campaign_metrics | ad_data | view
+D5eY5SlKOLnWPf | google_ad_metrics | ad_data | view
+zlny_yKpc8LnT8 | google_campaign_metrics | ad_data | view
+WcWOAFIcC5WTJA | linkedin_campaign_metrics | ad_data | view
+jcSBJQLqUzy5G_ | source_metrics | ad_data | view
+UB4ecGYQFzVADZ | meta_metrics | ad_data | view
+Huq4--ggVmbtk- | vw_adset_ad_metrics | ad_data | view
+g3lxL_aR1Rs6L- | vw_campaign_ad_metrics | ad_data | view
+e9v0vRhF9BG_Mq | vw_campaign_contacts | ad_data | view
+
+--- marketing/ (8 transforms) ---
+ZgnHxi0SkhDcwD | analytics_source_history | marketing | view
+u_rYEFJJCgeeSA | contact_analytics_source_and_campaign | marketing | view
+CkOEUIOEDqWBSS | deals_with_analytics_source_and_campaign | marketing | view
+tjxFCKeY9DGqhk | inbound_mqls | marketing | view
+fxjtoN05mAQq-2 | inbound_sqls | marketing | view
+-rtQ7TaFKTXS7K | sql_test | marketing | view
+jjL08OFaNHliqV | website_user_sessions | marketing | view
+jgoYZDsvTYZ9lb | inbound_contact_sources | marketing | view
