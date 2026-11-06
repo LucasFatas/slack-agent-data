@@ -153,7 +153,7 @@ t56YA-BSHC50RR | engagement_enriched | intermediate/hubspot | table | deps: stag
 --------------------------------------------------------------------------------
 analysis/demand_generation/ (20 transforms)
 --------------------------------------------------------------------------------
-L7nzfK0KCIS37a | contact_attribution | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.page_views__contact_touchpoints, staging.page_views__contact_conversions, linkedin_ads.campaign/campaign_group, {{raw.hubspot.contact_association}}, {{commercial.deal_shortened}}, hubspot.deal_property_history
+L7nzfK0KCIS37a | contact_attribution | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.page_views__contact_touchpoints, staging.page_views__contact_conversions, linkedin_ads.campaign/campaign_group, analysis.demand_generation__google_performance (Google campaign-name normalization), {{raw.hubspot.contact_association}}, {{commercial.deal_shortened}}, hubspot.deal_property_history
 N2dW17npUi53W9 | pipeline_attribution | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: analysis.commercial__deal_clean, analysis.commercial__deal_stage_history, {{raw.hubspot.contact_association}}, analysis.demand_generation__contact_attribution
 E5IyEoyhpOJALj | influenced_pipeline | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: {{raw.hubspot.contact_association}}, {{commercial.deal_shortened}}, intermediate.page_views__contact_touchpoints
 92fmqEHeBfh6Zt | touchpoint_timeline | analysis/demand_generation | table | orch: RPRe9-hoy6ayS1 | deps: intermediate.page_views__contact_touchpoints, staging.page_views__contact_conversions, analysis.demand_generation__contact_attribution

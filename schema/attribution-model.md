@@ -56,7 +56,7 @@ REVERSE ETL
 | contact_conversions | xd-AMwmqNf6fZ1 | mql_ts COALESCE with qualifying form fallback |
 | sessions | 4w4ONRIfPLr8EE | 30-min sessionization |
 | contact_touchpoints | 8iB4ZE9uQGxbxK | Touch model flags |
-| contact_attribution | L7nzfK0KCIS37a | Main attribution table |
+| contact_attribution | L7nzfK0KCIS37a | Main attribution table; also reads `google_performance` for Google campaign-name normalization |
 | pipeline_attribution | N2dW17npUi53W9 | Deal-centric, matches commercial dashboard |
 | campaign_metrics | k2FGLCWSyLS3c_ | Unified spend (4 platforms) |
 | adset_metrics | KS1yb26a9O-og3 | Unified adset spend |
@@ -76,6 +76,22 @@ REVERSE ETL
 **Deal:** deal_id, deal_stage, deal_amount, pipeline_name
 
 **Journey:** total_sessions, paid_sessions, organic_sessions, days_first_to_conversion
+
+## Google Campaign Name Normalization (added 2026-11)
+
+`contact_attribution` canonicalizes the six `*_campaign` fields **for Google touches only** against the real spend-side campaign names in `google_performance` (via a `google_canonical` CTE; this is why `contact_attribution` now depends on `google_performance`).
+
+Why: the raw `utm_campaign` captured at click time drifts from the Google Ads campaign name — missing `Google - ` prefix (e.g. `EN - Generic - Max. Conv.`), the Google double-space bug, and case differences. These variants don't join to `google_performance.campaign_name`, which splits per-campaign MQLs across phantom spend-less names and inflates cost-per-MQL.
+
+How it works:
+- Normalized key = `LOWER` → strip leading `google -` prefix → collapse whitespace → `TRIM`.
+- A raw name is remapped to a canonical name only when its key **unambiguously** matches exactly one canonical campaign. On a key collision the canonical carrying the **most spend** wins.
+- No match → the value is kept (whitespace-collapsed + trimmed), never force-mapped, so an MQL is never attributed to the wrong campaign.
+- Non-Google platforms pass through unchanged.
+
+Propagation: normalized names flow downstream to `pipeline_attribution` and to HubSpot via the reverse-ETL views (`conversion_touch_campaign`). All per-campaign metrics benefit automatically (they already group on `conversion_touch_campaign`).
+
+Residual: campaigns genuinely renamed in Google Ads (e.g. `EN - Competitors - Target CPA €1250`) and null/PMax campaigns still won't match — the real fix is aligning the UTM tracking templates in Google Ads.
 
 ## pipeline_attribution Key Columns
 
